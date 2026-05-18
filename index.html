@@ -69,13 +69,10 @@
   </div>
 
   <script>
-    // ===== 密码配置 =====
-    // 默认密码，你想改的话直接改这里的字符串就行
-    var SITE_PASSWORD = "123456";
-
-    // 密码哈希存储（SHA-256），这样即使有人看源码也不知道原密码
-    // 更安全的方式：在部署前把下面这个 hash 换成真实密码的 SHA-256
-    var PASSWORD_HASH = null; // null = 直接用明文比对；有值则用 hash 比对
+    // ===== 密码配置 (Hash 模式) =====
+    // 密码使用 SHA-256 hash 存储，源码中不暴露明文
+    // 如需更换密码，用新密码生成 hash 替换下面这串值即可
+    var PASSWORD_HASH = "4fcd303cebaaf2663e90ee4d564ac300308f5d29a32c7ca2999526a23a3ef3d9";
 
     // ===== 密码验证逻辑 =====
     async function checkPassword() {
@@ -89,14 +86,9 @@
 
       var matched = false;
 
-      if (PASSWORD_HASH) {
-        // SHA-256 hash 比对
-        var hash = await sha256(input);
-        matched = (hash === PASSWORD_HASH);
-      } else {
-        // 明文比对
-        matched = (input === SITE_PASSWORD);
-      }
+      // SHA-256 hash 比对
+      var hash = await sha256(input);
+      matched = (hash === PASSWORD_HASH);
 
       if (matched) {
         // 验证成功，显示内容
