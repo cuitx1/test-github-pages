@@ -4,13 +4,135 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>测试页面</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      display: flex; justify-content: center; align-items: center; min-height: 100vh;
+    }
+
+    /* ===== 密码锁 ===== */
+    #lock-screen {
+      background: #fff;
+      padding: 48px 40px;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+      text-align: center;
+      width: 380px;
+      max-width: 90vw;
+    }
+    #lock-screen h1 { font-size: 20px; color: #333; margin-bottom: 8px; }
+    #lock-screen p  { font-size: 14px; color: #999; margin-bottom: 28px; }
+    #lock-screen input {
+      width: 100%; padding: 12px 16px; font-size: 16px;
+      border: 1px solid #ddd; border-radius: 8px;
+      outline: none; transition: border-color 0.2s; text-align: center;
+    }
+    #lock-screen input:focus { border-color: #4a90d9; }
+    #lock-screen .error {
+      color: #e74c3c; font-size: 13px; margin-top: 10px; min-height: 20px;
+    }
+    #lock-screen button {
+      width: 100%; margin-top: 12px; padding: 12px;
+      background: #4a90d9; color: #fff; border: none; border-radius: 8px;
+      font-size: 16px; cursor: pointer; transition: background 0.2s;
+    }
+    #lock-screen button:hover { background: #357abd; }
+
+    /* ===== 内容页 ===== */
+    #content { display: none; max-width: 700px; width: 100%; padding: 20px; }
+    #content h1 { font-size: 28px; color: #333; margin-bottom: 12px; }
+    #content p  { font-size: 16px; color: #666; line-height: 1.8; }
+
+    /* ===== 错误页 ===== */
+    #error-screen { display: none; text-align: center; padding: 40px; }
+    #error-screen h1 { font-size: 22px; color: #e74c3c; margin-bottom: 12px; }
+  </style>
 </head>
 <body>
-  <h1>GitHub Pages 测试</h1>
-  <p>如果你能看到这个页面，说明 GitHub Pages 配置成功。</p>
-  <p>当前时间：<span id="time"></span></p>
+
+  <!-- 密码锁 -->
+  <div id="lock-screen">
+    <h1>需要密码</h1>
+    <p>请输入访问密码</p>
+    <input type="password" id="password-input" placeholder="请输入密码" autofocus>
+    <div class="error" id="error-msg"></div>
+    <button onclick="checkPassword()">验证</button>
+  </div>
+
+  <!-- 内容页 -->
+  <div id="content">
+    <h1>欢迎访问</h1>
+    <p>密码验证成功，这里是受保护的内容区域。</p>
+    <p>当前时间：<span id="time"></span></p>
+  </div>
+
   <script>
-    document.getElementById('time').textContent = new Date().toLocaleString('zh-CN');
+    // ===== 密码配置 =====
+    // 默认密码，你想改的话直接改这里的字符串就行
+    var SITE_PASSWORD = "123456";
+
+    // 密码哈希存储（SHA-256），这样即使有人看源码也不知道原密码
+    // 更安全的方式：在部署前把下面这个 hash 换成真实密码的 SHA-256
+    var PASSWORD_HASH = null; // null = 直接用明文比对；有值则用 hash 比对
+
+    // ===== 密码验证逻辑 =====
+    async function checkPassword() {
+      var input = document.getElementById("password-input").value.trim();
+      var errorEl = document.getElementById("error-msg");
+
+      if (!input) {
+        errorEl.textContent = "请输入密码";
+        return;
+      }
+
+      var matched = false;
+
+      if (PASSWORD_HASH) {
+        // SHA-256 hash 比对
+        var hash = await sha256(input);
+        matched = (hash === PASSWORD_HASH);
+      } else {
+        // 明文比对
+        matched = (input === SITE_PASSWORD);
+      }
+
+      if (matched) {
+        // 验证成功，显示内容
+        document.getElementById("lock-screen").style.display = "none";
+        document.getElementById("content").style.display = "block";
+        document.getElementById("time").textContent = new Date().toLocaleString("zh-CN");
+
+        // 记住登录状态（Session 级别，关闭浏览器后失效）
+        sessionStorage.setItem("auth", "true");
+      } else {
+        errorEl.textContent = "密码错误，请重试";
+        document.getElementById("password-input").value = "";
+      }
+    }
+
+    // SHA-256 工具函数
+    async function sha256(message) {
+      var msgBuffer = new TextEncoder().encode(message);
+      var hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+      var hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(function(b) { return b.toString(16).padStart(2, "0"); }).join("");
+    }
+
+    // 回车触发验证
+    document.getElementById("password-input").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") checkPassword();
+    });
+
+    // 页面加载时检查已登录状态
+    (function() {
+      if (sessionStorage.getItem("auth") === "true") {
+        document.getElementById("lock-screen").style.display = "none";
+        document.getElementById("content").style.display = "block";
+        document.getElementById("time").textContent = new Date().toLocaleString("zh-CN");
+      }
+    })();
   </script>
 </body>
 </html>
